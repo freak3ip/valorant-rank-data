@@ -7,28 +7,27 @@ on:
 
 jobs:
   update-rank:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04  # Используем старую Ubuntu
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v2
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - name: Use Node.js 14
+        uses: actions/setup-node@v2
         with:
-          node-version: '18'
+          node-version: '14'  # Старая версия Node.js
 
       - name: Install dependencies
         run: |
           npm init -y
-          npm install axios@1.6.2 cheerio@1.0.0-rc.12
+          npm install axios@0.21.4 cheerio@0.22.0
 
       - name: Run parser
         run: node .github/scripts/parser.js
-        continue-on-error: true
 
-      - name: Commit and push if changed
+      - name: Commit files
         run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
           git add rank.json
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update rank [skip ci]" && git push)
+          git diff --quiet && git diff --staged --quiet || git commit -m "Auto-update rank"
+          git push
