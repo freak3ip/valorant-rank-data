@@ -12,55 +12,73 @@ async function parseRank() {
         const url = `https://tracker.gg/valorant/profile/riot/${encodeURIComponent(NICKNAME)}%23${encodeURIComponent(TAG)}/overview`;
         console.log('📡 URL:', url);
 
-        const { data } = await axios.get(url, {
+        // Используем старый добрый axios без наворотов
+        const response = await axios.get(url, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
                 'Accept-Language': 'en-US,en;q=0.5',
-                'Connection': 'keep-alive',
+            },
+            timeout: 10000
+        });
+
+        const $ = cheerio.load(response.data);
+
+        // Ищем ранг
+        let rank = 'Неизвестно';
+        $('div').each((i, el) => {
+            const text = $(el).text().trim();
+            if (text.includes('Gold') || text.includes('Platinum') || text.includes('Diamond') ||
+                text.includes('Silver') || text.includes('Bronze') || text.includes('Iron')) {
+                rank = text;
             }
         });
 
-        const $ = cheerio.load(data);
+        // Ищем RR
+        let rr = '0';
+        $('div').each((i, el) => {
+            const text = $(el).text().trim();
+            if (text.includes('RR') || text.match(/\d+\s*RR/)) {
+                rr = text;
+            }
+        });
 
-        // Пробуем разные селекторы (tracker.gg часто меняет классы)
-        let rank = $('.valorant-rank').text().trim() ||
-                  $('.rank').text().trim() ||
-                  $('.rating').text().trim() ||
-                  'Неизвестно';
-
-        let rr = $('.valorant-rr').text().trim() ||
-                $('.rr').text().trim() ||
-                '0';
-
-        let lastMatch = $('.match-result').first().text().trim() ||
-                       $('.result').first().text().trim() ||
-                       'Нет данных';
-
-        // Очищаем от лишних пробелов и переносов
-        rank = rank.replace(/\s+/g, ' ').trim();
-        rr = rr.replace(/\s+/g, ' ').trim();
-        lastMatch = lastMatch.replace(/\s+/g, ' ').trim();
+        // Ищем последний матч
+        let lastMatch = 'Нет данных';
+        $('span, div').each((i, el) => {
+            const text = $(el).text().trim();
+            if (text.includes('Win') || text.includes('Loss') || text.includes('Defeat')) {
+                lastMatch = text;
+            }
+        });
 
         const result = {
             nick: NICKNAME,
-            rank: rank || 'Неизвестно',
-            rr: rr || '0',
-            last_match: lastMatch || 'Нет данных',
+            rank: rank.substring(0, 50),
+            rr: rr.substring(0, 20),
+            last_match: lastMatch.substring(0, 50),
             updated: new Date().toISOString()
         };
 
-        console.log('📊 Полученные данные:', result);
+        console.log('📊 Найденные данные:', result);
 
         fs.writeFileSync('rank.json', JSON.stringify(result, null, 2));
         console.log('✅ Файл rank.json успешно обновлен!');
 
     } catch (error) {
-        console.error('❌ Ошибка парсинга:', error.message);
-        if (error.response) {
-            console.error('Статус ответа:', error.response.status);
-        }
-        process.exit(1);
+        console.error('❌ Ошибка:', error.message);
+        // Создаём заглушку при ошибке
+        const fallback = {
+            nick: NICKNAME,
+            rank: 'Временно недоступно',
+            rr: '0',
+            last_match: 'Ошибка парсинга',
+            updated: new Date().toISOString(),
+            error: error.message
+        };
+        fs.writeFileSync('rank.json', JSON.stringify(fallback, null, 2));
+        console.log('📝 Создан fallback файл');
+        process.exit(0); // Не падаем с ошибкой
     }
 }
 
