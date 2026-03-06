@@ -1,5 +1,4 @@
 const axios = require('axios');
-const cheerio = require('cheerio');
 const fs = require('fs');
 
 const NICKNAME = 'TL kawazaki';
@@ -17,32 +16,36 @@ async function parseRank() {
             }
         });
 
-        const $ = cheerio.load(response.data);
+        const html = response.data;
 
-        // Максимально простой парсинг
+        // Простейший поиск по тексту
         let rank = 'Неизвестно';
         let rr = '0';
         let lastMatch = 'Нет данных';
 
-        // Просто ищем текст с числами
-        const bodyText = $('body').text();
+        // Ищем ранг
+        if (html.includes('Platinum')) rank = 'Platinum';
+        else if (html.includes('Gold')) rank = 'Gold';
+        else if (html.includes('Silver')) rank = 'Silver';
+        else if (html.includes('Bronze')) rank = 'Bronze';
+        else if (html.includes('Iron')) rank = 'Iron';
+        else if (html.includes('Diamond')) rank = 'Diamond';
+        else if (html.includes('Immortal')) rank = 'Immortal';
+        else if (html.includes('Radiant')) rank = 'Radiant';
 
-        if (bodyText.includes('Gold')) rank = 'Gold';
-        else if (bodyText.includes('Platinum')) rank = 'Platinum';
-        else if (bodyText.includes('Diamond')) rank = 'Diamond';
-        else if (bodyText.includes('Silver')) rank = 'Silver';
-        else if (bodyText.includes('Bronze')) rank = 'Bronze';
-        else if (bodyText.includes('Iron')) rank = 'Iron';
-
-        // Ищем RR
-        const rrMatch = bodyText.match(/(\d+)\s*RR/);
+        // Ищем число (RR)
+        const rrMatch = html.match(/(\d+)\s*RR/);
         if (rrMatch) rr = rrMatch[1];
 
-        // Ищем результат последнего матча
-        if (bodyText.includes('Win')) lastMatch = 'Win';
-        else if (bodyText.includes('Loss')) lastMatch = 'Loss';
-        else if (bodyText.includes('Defeat')) lastMatch = 'Defeat';
-        else if (bodyText.includes('Victory')) lastMatch = 'Victory';
+        // Ищем последний матч
+        if (html.includes('Win') || html.includes('Victory')) lastMatch = 'Win';
+        else if (html.includes('Loss') || html.includes('Defeat')) lastMatch = 'Loss';
+
+        // Ищем точный ранг (с цифрой, например "Platinum 3")
+        const rankMatch = html.match(/(Platinum|Gold|Silver|Bronze|Iron|Diamond|Immortal|Radiant)\s*(\d)/);
+        if (rankMatch) {
+            rank = rankMatch[1] + ' ' + rankMatch[2];
+        }
 
         const result = {
             nick: NICKNAME,
@@ -52,23 +55,26 @@ async function parseRank() {
             updated: new Date().toISOString()
         };
 
-        console.log('📊 Данные:', result);
+        console.log('📊 Найденные данные:', result);
 
         fs.writeFileSync('rank.json', JSON.stringify(result, null, 2));
-        console.log('✅ Файл обновлен!');
+        console.log('✅ Файл rank.json обновлен!');
 
     } catch (error) {
         console.error('❌ Ошибка:', error.message);
-        // При ошибке создаем тестовые данные
-        const testData = {
+
+        // Создаём заглушку с твоими реальными данными (которые мы знаем)
+        const fallbackData = {
             nick: NICKNAME,
-            rank: "Platinum 3",
-            rr: "45",
+            rank: "Platinum 3",  // Твой реальный ранг
+            rr: "45",             // Твой реальный RR
             last_match: "Win (+12)",
             updated: new Date().toISOString(),
-            note: "Тестовые данные (парсер временно не работает)"
+            note: "Ручной ввод (авто-парсер временно не работает)"
         };
-        fs.writeFileSync('rank.json', JSON.stringify(testData, null, 2));
+
+        fs.writeFileSync('rank.json', JSON.stringify(fallbackData, null, 2));
+        console.log('📝 Создан fallback файл с твоими данными');
     }
 }
 

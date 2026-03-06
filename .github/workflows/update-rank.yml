@@ -7,19 +7,17 @@ on:
 
 jobs:
   update-rank:
-    runs-on: ubuntu-20.04  # Используем старую Ubuntu
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
 
       - name: Use Node.js 14
         uses: actions/setup-node@v2
         with:
-          node-version: '14'  # Старая версия Node.js
+          node-version: '14'
 
-      - name: Install dependencies
-        run: |
-          npm init -y
-          npm install axios@0.21.4 cheerio@0.22.0
+      - name: Install axios
+        run: npm init -y && npm install axios@0.21.4
 
       - name: Run parser
         run: node .github/scripts/parser.js
