@@ -2,7 +2,7 @@ name: Update Valorant Rank
 
 on:
   schedule:
-    - cron: '0 * * * *'
+    - cron: '0 */6 * * *'  # Каждые 6 часов
   workflow_dispatch:
 
 jobs:
@@ -15,10 +15,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: '16'  # Используем Node 16 (более стабильный)
 
-      - name: Install dependencies
-        run: npm install axios cheerio
+      - name: Clean install
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install
 
       - name: Run parser
         run: node .github/scripts/parser.js
@@ -28,5 +30,5 @@ jobs:
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add rank.json
-          git diff --quiet && git diff --staged --quiet || git commit -m "Автообновление ранга"
+          git diff --quiet && git diff --staged --quiet || git commit -m "Автообновление ранга [$(date +'%Y-%m-%d %H:%M')]"
           git push
